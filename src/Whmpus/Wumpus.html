@@ -1,0 +1,269 @@
+<html>
+
+<head>
+    <style>
+        td {
+            width: 120px;
+            height: 120px;
+            background-color:#91a082;
+        }
+
+        table {
+            margin-left: auto;
+            margin-right: auto;
+        }
+        h1 {
+            text-align: center;
+            color: cornsilk;
+            font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color:#262626;
+        }
+
+        td {
+            text-align: center;
+        }
+
+        #score {
+            margin-left: auto;
+            margin-right: auto;
+            height: 100px;
+            width: 600px;
+            text-align: center;
+            font-size: 2cm;
+            color: #ffda6d;
+            font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif
+        }
+
+        #score::before {
+            content: "Score ";
+            color: #f7d570cd;
+
+        }
+    </style>
+</head>
+
+<body>
+   
+                
+        <h1>Wumpus World - AI Agent</h1>        
+
+        <div id="score">0</div>
+        <div id="board"/>
+
+</body>
+
+<script>
+
+    var elements = {
+        "monster":"monster",
+        "player": "player",
+        "slayer": "slayer",
+        "hole": "hole",
+        "coin": "coin",
+        "arrow": "arrow"
+    }
+    
+    var resources = {
+        "player": "player.png",
+        "monster":"monster.png",
+        "hole":"hole.png",
+        "coin": "coin.png",
+        "arrow": "arrow.png",
+        "slayer": "shoot.png"
+    }
+
+    var background = {
+        "hole" : "wind.png",
+        "monster" : "stench.png",
+    }
+
+    var map
+    var goldTaken = false;
+    var whmpusKilled = false
+    var goldPosition
+    var whmpusPosition
+    var score = 0
+
+    var positions
+    var maxMoves 
+
+    emptyTable()
+
+    function displayMap(mapObject) {
+        
+        map = mapObject
+        var pits = mapObject.pits
+
+        if(!goldTaken) {
+            goldPosition = mapObject.gold
+            setContent(elements.coin,goldPosition.row,goldPosition.col)
+        }
+
+        if (!whmpusKilled){
+            whmpusPosition = mapObject.whmpus
+            setContent(elements.monster,whmpusPosition.row,whmpusPosition.col)
+            setCellBackground(elements.monster,whmpusPosition.row,whmpusPosition.col)
+
+        }
+
+        for(index in pits) {
+            pit = pits[index]
+            setContent(elements.hole,pit.row,pit.col)
+            setCellBackground(elements.hole,pit.row,pit.col)
+        }
+        
+    }
+
+   function displayPlayer(playerPositions) {
+        positions = playerPositions.moves
+        maxMoves = positions.length
+        movePlayer(maxMoves-1);
+    }
+
+    function movePlayer(i) {
+        if (i < 0) return;
+
+        setTimeout(function () {
+
+            score -= 1
+            document.getElementById("score").innerHTML = score
+            j = maxMoves - 1 - i
+
+            var currentPosition = positions[j]
+            var nextIndex = j + 1 >= maxMoves ? j : j + 1;
+            var nexPosition = positions[nextIndex]
+
+            if (checkCoordinatesEqual(currentPosition,whmpusPosition)) {
+                whmpusKilled = true
+            }
+
+            if (checkCoordinatesEqual(currentPosition,goldPosition)) {
+                score += 1000
+                document.getElementById("score").innerHTML = score
+                goldTaken = true
+            }
+
+            emptyTable()
+            
+            displayMap(map)
+            
+            const aboutToKill = !whmpusKilled && checkCoordinatesEqual(nexPosition,whmpusPosition)
+
+            if(aboutToKill) {
+                setContent(elements.slayer,currentPosition.row,currentPosition.col)
+            } else {
+                setContent(elements.player,currentPosition.row,currentPosition.col)
+            }      
+            movePlayer(--i);
+        }, 5000);
+    }
+
+    function checkCoordinatesEqual(point1,point2) {
+        if((point1.row == point2.row) && (point1.col == point2.col)) {
+            return true
+        }
+        return false
+    }
+
+    readJSON("game-map.json",displayMap)
+    readJSON("player-moves.json",displayPlayer)
+
+    function readJSON(file,callback){
+        var rawFile = new XMLHttpRequest();
+        rawFile.open("GET", file, true);
+        rawFile.onreadystatechange = function ()
+        {
+            if(rawFile.readyState === 4)
+            {
+                if(rawFile.status === 200 || rawFile.status == 0)
+                {
+                    var text = rawFile.responseText
+                    var json = JSON.parse(text);
+                
+                    callback(json)
+                }
+            }
+        }
+        rawFile.send();
+    }
+
+    function emptyTable() {
+
+        var container = document.getElementById("board") 
+        container.innerHTML = ""
+
+        var row = 1,col = 1;
+        var table = document.createElement("table")
+        for(row = 4; row >= 1; row-=1) {
+            var tr = document.createElement("tr")
+            for(col = 1; col <= 4; col+=1) {
+                var td = document.createElement("td")
+                td.id = row+""+col
+                var div = document.createElement("div")
+                div.className = "bg1"
+                td.appendChild(div)
+                tr.appendChild(td)
+            }
+
+            table.appendChild(tr)
+        }
+
+        container.appendChild(table);
+    }
+
+    function setContent(element,row,col) {
+
+      
+        var td = document.getElementById(row+""+col);
+        
+        var graphic = "<img src= "+resources[element]+" width='auto' height='60%' >"
+        td.style.backgroundImage = ""
+        td.innerHTML += graphic 
+    
+    }
+
+    function setCellBackground(elementName,row,col) {
+        
+        var td
+        if(row - 1 >= 1 ) {
+            td = document.getElementById(row-1+""+col);
+            setSizedBackground()
+        }
+
+        if(row + 1 <= 4 ) {
+            td = document.getElementById((row+1)+""+col);
+            setSizedBackground()
+        }
+
+        if(col + 1 <= 4 ) {
+            td = document.getElementById(row+""+(col+1));
+            setSizedBackground()
+        }
+
+        if(col - 1 >= 1 ) {
+            td = document.getElementById(row+""+(col-1));
+            setSizedBackground()
+        }
+        
+        function setSizedBackground() {
+            
+            switch(elementName) {
+                case elements.hole:
+                td.style.backgroundColor = "#7392ff"
+                break;
+
+                case elements.monster:
+                td.style.backgroundPosition = "center"
+                td.style.backgroundImage = "url('"+background[elementName]+"')" 
+                td.style.backgroundRepeat = "no-repeat"
+                td.style.backgroundSize = "45%"
+                break;
+            }   
+        }
+    }
+</script>
+
+</html>
